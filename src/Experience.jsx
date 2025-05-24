@@ -1,5 +1,5 @@
 import { PivotControls, useGLTF } from "@react-three/drei";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import useObject from "../store/object";
 import { useFrame } from "@react-three/fiber";
@@ -15,10 +15,10 @@ function NewModel() {
   const objectName = useObject((state) => state.objectName);
   const setIsDragging = useObject((state) => state.setIsDragging);
 
+  const [zDragging, setZDragging] = useState(false);
+
   const setPipePosition = useObject((state) => state.setPipePosition);
   const setPipeRotation = useObject((state) => state.setPipeRotation);
-
-  const { scene } = useThree();
 
   const handlePointerMove = (e) => {
     if (!isDragging) return;
@@ -32,22 +32,56 @@ function NewModel() {
     };
   };
 
+  const { scene } = useThree();
+  const checkbox = useObject((state) => state.checkbox);
+  const pipePosition = useObject((state) => state.pipePosition);
+
   const handlePointerMissed = () => {
     if (objectName !== "pipe") return setIsDragging(false);
 
-    const position = model.current.position;
     const rotation = model.current.rotation;
-    setPipePosition(position);
+    const relativePosition = new THREE.Vector3()
+      .copy(model.current.position)
+      .sub(new THREE.Vector3(-1, 0, 0)); // Compensate for house position
+    setPipePosition(relativePosition);
     setPipeRotation(rotation);
     setIsDragging(false);
-    scene.remove(model.current);
+    if (checkbox) {
+      scene.remove(model.current);
+    }
   };
+
+  const handleKeyDown = (e) => {
+    if (e.key !== "z") return;
+
+    setZDragging(true);
+  }
+
+  const handleKeyUp = (e) => {
+    if (e.key !== "z") return;
+
+    setZDragging(false);
+  }
 
   useEffect(() => {
     window.addEventListener("mousemove", handlePointerMove);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
 
-    return () => window.removeEventListener("mousemove", handlePointerMove);
+    return () => {
+      window.removeEventListener("mousemove", handlePointerMove);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
   }, [isDragging]);
+
+  useEffect(() => {
+    if (checkbox && pipePosition) {
+      if (model.current) {
+        scene.remove(model.current);
+      }
+    }
+  }, [checkbox, pipePosition]);
 
   useFrame(() => {
     if (!model.current) return;
@@ -56,10 +90,33 @@ function NewModel() {
       (target.current.x - model.current.position.x) * 0.2;
     model.current.position.y +=
       (target.current.y - model.current.position.y) * 0.2;
+    
+    if (zDragging) {
+      model.current.position.z += ((target.current.x - model.current.position.x) - (target.current.y - model.current.position.y)) * 0.2;
+    }
   });
 
   const scale = objectName === "window" ? 0.012 : 1.5;
   const rotation = objectName === "window" ? [0, 4.8, 0] : [0, 0, 0];
+
+  const modelPipeGeometry = new THREE.CylinderGeometry(0.125, 0.125, 2.0);
+
+  if (objectName === "pipe") {
+    return (
+      <mesh
+        ref={model}
+        onPointerDown={() => setIsDragging(true)}
+        onPointerUp={() => setIsDragging(false)}
+        onPointerMissed={handlePointerMissed}
+        scale={scale}
+        position={objectName === "Doorway" ? [2.2, 0, 1.35] : [2.2, 0, 0]}
+        rotation={[Math.PI / 2, 0, 0]}
+        geometry={modelPipeGeometry}
+      >
+        <meshStandardMaterial color={"red"} />
+      </mesh>
+    );
+  }
 
   return (
     <primitive
@@ -81,6 +138,7 @@ function Experience() {
   const isDragging = useObject((state) => state.isDragging);
 
   const pipePosition = useObject((state) => state.pipePosition);
+  const pipeRotation = useObject((state) => state.pipeRotation);
 
   const csg = useRef();
 
@@ -96,7 +154,13 @@ function Experience() {
 
   const geometry = model.nodes.mesh_0.geometry;
 
-  const piperef = useRef();
+  const refTemp = useRef();
+
+  const handlePointerMissed = () => {
+    console.log("cut", refTemp.current?.position);
+    console.log("house", csg.current?.position);
+    console.log("pipePosition", pipePosition);
+  };
 
   return (
     <>
@@ -105,13 +169,20 @@ function Experience() {
         <Geometry ref={csg}>
           <Base geometry={geometry} />
           {pipePosition && (
-              <Subtraction
-                ref={piperef}
-                position={[pipePosition.x, pipePosition.y + 0.25, pipePosition.z]}
-                rotation={[Math.PI / 2, 0, 0]}
-              >
-                <cylinderGeometry args={[0.2, 0.2, 10]} />
+            <group
+              position={[
+                pipePosition.x * -0.64,
+                pipePosition.y / 1.6,
+                pipePosition.z,
+              ]}
+              rotation={pipeRotation}
+              onPointerMissed={handlePointerMissed}
+              ref={refTemp}
+            >
+              <Subtraction>
+                <cylinderGeometry args={[0.125, 0.125, 2.0]} />
               </Subtraction>
+            </group>
           )}
         </Geometry>
       </mesh>

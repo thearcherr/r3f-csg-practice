@@ -13,6 +13,12 @@ const useObject = create((set) => ({
   setPipePosition: (payload) => set({ pipePosition: payload }),
   pipeRotation: null,
   setPipeRotation: (payload) => set({ pipeRotation: payload }),
+  pipeGeometry: null,
+  setPipeGeometry: (payload) => set({ pipeGeometry: payload }),
+  holePosition: null,
+  setHolePosition: (payload) => set({ holePosition: payload }),
+  checkbox: false,
+  setCheckbox: (payload) => set({checkbox: payload})
 }));
 
 export default useObject;

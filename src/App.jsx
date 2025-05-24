@@ -35,14 +35,17 @@ function App() {
         setObject(pipe);
         break;
 
-      case "window":
-        setObjectName("window");
+      case "hole":
+        setObjectName("hole");
         setObject(window);
         break;
       default:
         break;
     }
   };
+
+  const setCheck = useObject((state) => state.setCheckbox);
+  const checkbox = useObject((state) => state.checkbox);
 
   return (
     <>
@@ -54,7 +57,7 @@ function App() {
       </Canvas>
       <div className="bg-white absolute top-0 right-0 p-4 w-1/4 h-full rounded">
         <h1 className="text-2xl font-bold mb-10">Control Panel</h1>
-        <div className="grid grid-cols-2 gap-y-4">
+        <div className="grid grid-cols-2 gap-y-4 mb-5">
           <div
             className="w-24 h-24 cursor-pointer"
             onClick={() => handleClick("Doorway")}
@@ -75,6 +78,10 @@ function App() {
               className="w-full h-full rounded-lg"
             />
           </div>
+        </div>
+        <div className="flex flex-row gap-2">
+          <input onChange={() => setCheck(!checkbox)} type="checkbox" id="check" className="scale-125 cursor-pointer" />
+          <label for="check">Remove model after cut</label>
         </div>
       </div>
     </>
